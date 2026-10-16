@@ -1,0 +1,13 @@
+{
+  "name": "@bushcraftcn/ccot",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "build": "webpack --mode production"
+  },
+  "devDependencies": {
+    "flarum-webpack-config": "3.0.0",
+    "webpack": "5.104.1",
+    "webpack-cli": "4.10.0"
+  }
+}

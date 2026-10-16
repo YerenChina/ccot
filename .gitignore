@@ -1,0 +1,12 @@
+/vendor/
+/js/node_modules/
+/js/.cache/
+/.phpunit.cache/
+/.env
+/.env.*
+/.DS_Store
+/tests/
+/.github/
+/storage/
+/config.php
+/sms-config.enc*

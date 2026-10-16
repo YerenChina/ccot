@@ -1,0 +1,60 @@
+{
+  "name": "bushcraftcn/ccot",
+  "description": "CCOT — China Compliance Operations Toolkit：中国合规运营工具包，为 Flarum 提供手机号认证、运营单页、私人工单、帖子图片、私信控制和 IP 属地展示。复用原生帖子和账号功能，不替代备案办理与人工运营。",
+  "type": "flarum-extension",
+  "license": "MIT",
+  "keywords": ["flarum", "sms", "china", "community", "operations"],
+  "readme": "README.md",
+  "homepage": "https://bushcraftcn.com",
+  "support": {
+    "issues": "https://github.com/YerenChina/ccot/issues",
+    "source": "https://github.com/YerenChina/ccot"
+  },
+  "authors": [{"name": "YerenChina", "homepage": "https://github.com/YerenChina/ccot"}],
+  "require": {
+    "php": "~8.4.0",
+    "ext-openssl": "*",
+    "ext-fileinfo": "*",
+    "ext-gd": "*",
+    "flarum/core": "2.0.0 || 2.0.1",
+    "flarum/bbcode": "2.0.0 || 2.0.1",
+    "flarum/flags": "2.0.0 || 2.0.1",
+    "flarum/likes": "2.0.0 || 2.0.1",
+    "flarum/suspend": "2.0.0 || 2.0.1",
+    "flarum/nicknames": "2.0.0 || 2.0.1",
+    "flarum-lang/chinese-simplified": "2.0.0",
+    "alibabacloud/dysmsapi-20170525": "4.6.0",
+    "zoujingli/ip2region": "3.0.16",
+    "ext-exif": "*",
+    "intervention/image": "3.11.10"
+  },
+  "suggest": {
+    "flarum/messages": "可选的官方私信功能；已验证 2.0.0 / 2.0.1，可单独启停。"
+  },
+  "conflict": {
+    "flarum/messages": "!=2.0.0 !=2.0.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "BushcraftCN\\CCOT\\": "src/"
+    }
+  },
+  "archive": {
+    "exclude": ["/js/node_modules", "/vendor", "/.git", "/.github", "/tests", "/.env", "/.env.*"]
+  },
+  "extra": {
+    "flarum-extension": {
+      "title": "CCOT",
+      "category": "feature",
+      "optional-dependencies": ["flarum/messages"],
+      "icon": {
+        "name": "fas fa-toolbox",
+        "backgroundColor": "#245b45",
+        "color": "#fff"
+      },
+      "database-support": [
+        "mysql"
+      ]
+    }
+  }
+}
