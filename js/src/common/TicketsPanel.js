@@ -1,4 +1,5 @@
 import t from './t';
+import ConfirmActionModal from './ConfirmActionModal';
 import app from 'flarum/common/app';
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
@@ -60,14 +61,17 @@ export default class TicketsPanel extends Component {
   }
   async deleteTicket(ticket) {
     if (!this.attrs.admin || this.saving || ticket.hold || this.draft(ticket).hold || this.hasUnsaved()) return;
-    if (!window.confirm(t("lib.confirm_delete_ticket", { number: ticket.number }))) return;
+    app.modal.show(ConfirmActionModal, { title: t('lib.delete_ticket'), message: t('lib.confirm_delete_ticket', { number: ticket.number }), run: () => this.performDelete(ticket) });
+  }
+  async performDelete(ticket) {
+    if (!this.attrs.admin || this.saving || ticket.hold || this.draft(ticket).hold || this.hasUnsaved()) return;
     this.saving = ticket.id; this.errors.delete(ticket.id); this.notice = '';
     try {
       const result = await app.request({ method: 'DELETE', url: `${app.forum.attribute('apiUrl')}/ccot/tickets/${ticket.id}` });
       this.drafts.delete(ticket.id); this.openTickets.delete(ticket.id);
       this.notice = `${ticket.number}：${result.message}`;
       await this.refresh();
-    } catch (error) { this.errors.set(ticket.id, error.response?.errors?.[0]?.detail || t("lib.delete_failed_please_retry")); }
+    } catch (error) { this.errors.set(ticket.id, error.response?.errors?.[0]?.detail || t("lib.delete_failed_please_retry")); throw error; }
     finally { this.saving = null; m.redraw(); }
   }
   images(ticket) {

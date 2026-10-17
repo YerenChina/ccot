@@ -17,6 +17,23 @@ use Psr\Http\Server\RequestHandlerInterface;
 /** Active-extension middleware only; never installed into application configuration. */
 final class Guard implements MiddlewareInterface
 {
+    public static function nativeMaintenance(string $path): bool
+    {
+        return (bool) preg_match('~^/(extensions(?:/|$)|extension-manager(?:/|$)|extension-bisect$|settings$|groups(?:/|$)|permission$|users(?:/|$)|logo(?:-dark-mode)?$|email-logo$|favicon$|cache$|mail/test$|queue(?:/|$))~', $path);
+    }
+
+    /** Only the native current-actor read marker, never content or relationships. */
+    public static function nativeReadState(ServerRequestInterface $request, string $path): bool
+    {
+        if ($request->getMethod() !== 'PATCH' || ! preg_match('~^/discussions/([1-9][0-9]*)$~D', $path, $match)) return false;
+        $body = $request->getParsedBody();
+        if (! is_array($body) || array_diff(array_keys($body), ['data', 'meta']) || ($body['meta'] ?? []) !== []) return false;
+        $data = $body['data'] ?? null;
+        if (! is_array($data) || array_diff(array_keys($data), ['type', 'id', 'attributes']) || ($data['type'] ?? null) !== 'discussions' || (! is_string($data['id'] ?? null) && ! is_int($data['id'] ?? null)) || (string) $data['id'] !== $match[1]) return false;
+        $attributes = $data['attributes'] ?? null;
+        return is_array($attributes) && array_keys($attributes) === ['lastReadPostNumber'] && is_int($attributes['lastReadPostNumber']) && $attributes['lastReadPostNumber'] > 0 && $attributes['lastReadPostNumber'] <= 2147483647;
+    }
+
     public function __construct(private Config $config, private SettingsRepositoryInterface $settings, private ConnectionInterface $db, private UserRepository $users, private Paths $paths) {}
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -40,8 +57,8 @@ final class Guard implements MiddlewareInterface
         }
         $enabled = in_array('bushcraftcn-ccot', json_decode($this->settings->get('extensions_enabled', '[]'), true) ?: [], true)
             && class_exists(\BushcraftCN\CCOT\AuthController::class);
-        $maintenance = $actor->isAdmin() && (preg_match('~^/(extensions|settings|groups|permissions|users(?:/|$))~', $path)
-            || in_array($path, ['/ccot/sms-settings', '/ccot/sms-test', '/ccot/sms-test-verify'], true)
+        $maintenance = $actor->isAdmin() && (self::nativeMaintenance($path) || self::nativeReadState($request, $path)
+            || in_array($path, ['/ccot/sms-settings', '/ccot/sms-test', '/ccot/sms-test-verify', '/ccot/block'], true)
             || str_starts_with($path, '/ccot/account-')
             || str_starts_with($path, '/ccot/post-images/')
             || (in_array($request->getMethod(), ['PATCH', 'DELETE'], true) && preg_match('~^/ccot/tickets/[1-9][0-9]*$~D', $path)));

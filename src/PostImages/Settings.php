@@ -20,11 +20,20 @@ final class Settings
     public function save(array $body): array
     {
         $next=[];
-        foreach (['enabled','simple'] as $key) {if(!is_bool($body[$key]??null))throw new Problem(I18n::t('api.post_images_invalid_settings'),422);$next[$key]=$body[$key];}
+        // Old clients may still send a full form; new clients save numeric limits separately.
+        foreach (['enabled','simple'] as $key) if(array_key_exists($key,$body)) {if(!is_bool($body[$key]))throw new Problem(I18n::t('api.post_images_invalid_settings'),422);$next[$key]=$body[$key];}
         foreach (['max_mb'=>[1,16],'max_mp'=>[1,40],'max_count'=>[1,9],'capacity_gb'=>[1,64]] as $key=>[$min,$max]) {
             $v=$body[$key]??null;if(!(is_int($v)||is_string($v)&&preg_match('/^[0-9]+$/D',$v))||(int)$v<$min||(int)$v>$max)throw new Problem(I18n::t('api.post_images_invalid_settings'),422);$next[$key]=(int)$v;
         }
         foreach($next as $key=>$value)$this->settings->set(self::PREFIX.$key,is_bool($value)?($value?'1':'0'):(string)$value);
+        return $this->read();
+    }
+
+    public function toggle(array $body): array
+    {
+        $key=array_key_first($body);
+        if(count($body)!==1||!in_array($key,['enabled','simple'],true)||!is_bool($body[$key]))throw new Problem(I18n::t('api.post_images_invalid_settings'),422);
+        $this->settings->set(self::PREFIX.$key,$body[$key]?'1':'0');
         return $this->read();
     }
 }

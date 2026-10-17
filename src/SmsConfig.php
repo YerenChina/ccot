@@ -91,6 +91,9 @@ final class SmsConfig
             if ($number === false || $number < $minimum || $number > $maximum) throw new Problem(I18n::t('api.sending_frequency_or_limits_are_outside_the_allowed_range'), 422);
             $next[$field] = $number;
         }
+        foreach (['key_id', 'key_secret', 'test_phone'] as $field) {
+            if (array_key_exists($field, $body) && ! is_string($body[$field])) throw new Problem(I18n::t('api.check_the_sms_settings'), 422);
+        }
         $id = trim((string) ($body['key_id'] ?? ''));
         $secret = trim((string) ($body['key_secret'] ?? ''));
         if (($id !== '') !== ($secret !== '') || strlen($id) > 256 || strlen($secret) > 256) throw new Problem(I18n::t('api.enter_both_accesskey_id_and_secret_when_updating_credentials'), 422);

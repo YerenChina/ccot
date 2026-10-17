@@ -1,4 +1,5 @@
 import t from '../common/t';
+import ConfirmActionModal from '../common/ConfirmActionModal';
 import app from 'flarum/admin/app';
 import Component from 'flarum/common/Component';
 import Button from 'flarum/common/components/Button';
@@ -8,12 +9,16 @@ export default class AccountRecovery extends Component {
   async submit(event) {
     event.preventDefault();
     if (this.busy || !/^1[3-9][0-9]{9}$/.test(this.phone)) return;
-    if (!window.confirm(t("lib.has_this_phone_number_been_reviewed_and_approved_to_remove"))) return;
+    const phone=this.phone;
+    app.modal.show(ConfirmActionModal, {title:t('lib.remove_after_manual_review'),message:t('lib.has_this_phone_number_been_reviewed_and_approved_to_remove'),details:m('p',phone.slice(0,3)+'****'+phone.slice(-4)),run:()=>this.removeRestriction(phone)});
+  }
+  async removeRestriction(phone) {
+    if(this.busy)return;
     this.busy = true; this.notice = '';
     try {
-      await app.request({ method: 'POST', url: `${app.forum.attribute('apiUrl')}/ccot/block`, body: { phone: this.phone, blocked: false } });
-      this.phone = ''; this.notice = t("lib.phone_restrictions_removed");
-    } catch (error) { this.notice = error.response?.errors?.[0]?.detail || t("lib.the_operation_failed_please_retry_later"); }
+      await app.request({ method: 'POST', url: `${app.forum.attribute('apiUrl')}/ccot/block`, body: { phone, blocked: false } });
+      if(this.phone===phone)this.phone = ''; this.notice = t("lib.phone_restrictions_removed");
+    } catch (error) { this.notice = error.response?.errors?.[0]?.detail || t("lib.the_operation_failed_please_retry_later"); throw error; }
     finally { this.busy = false; m.redraw(); }
   }
   view() {

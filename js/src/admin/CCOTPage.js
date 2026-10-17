@@ -1,5 +1,6 @@
 import PostImages from './PostImages';
 import t from '../common/t';
+import ConfirmActionModal from '../common/ConfirmActionModal';
 import app from 'flarum/admin/app';
 import ExtensionPage from 'flarum/admin/components/ExtensionPage';
 import Button from 'flarum/common/components/Button';
@@ -9,6 +10,7 @@ import isExtensionEnabled from 'flarum/admin/utils/isExtensionEnabled';
 import SmsSettings from './SmsSettings';
 import AccountManagement from './AccountManagement';
 import TicketsPanel from '../common/TicketsPanel';
+import DependencyWarnings from './DependencyWarnings';
 
 const tabs = { get sms() { return t("lib.sms_settings"); }, get footer() { return t("lib.footer_and_pages"); }, get tickets() { return t("lib.tickets"); }, get photos() { return t("lib.post_images_photos"); }, get messages() { return t("lib.private_messages"); }, get region() { return t("lib.ip_region_settings"); }, get account() { return t("lib.account_management"); }, get uninstall() { return t("lib.uninstall_preparation"); } };
 const labels = {
@@ -18,11 +20,20 @@ const labels = {
 
 export default class CCOTPage extends ExtensionPage {
   oninit(vnode) {
-    super.oninit(vnode); this.tab = 'sms'; this.health = null;
-    this.fetchHealth();
+    super.oninit(vnode); this.tab = 'sms'; this.health = null; this.dependenciesReady = false;
+  }
+  dependenciesChanged(ready) {
+    if (this.dependenciesReady === ready) return;
+    this.dependenciesReady = ready;
+    if (ready) this.fetchHealth();
+    else this.health = null;
   }
   async fetchHealth() {
-    this.health = await app.request({ method: 'GET', url: `${app.forum.attribute('apiUrl')}/ccot/health` }); m.redraw();
+    try {
+      const health = await app.request({ method: 'GET', url: `${app.forum.attribute('apiUrl')}/ccot/health` });
+      if (this.dependenciesReady) this.health = health;
+    } catch (_) { this.health = null; }
+    m.redraw();
   }
   infoItems() {
     const items = super.infoItems();
@@ -30,7 +41,10 @@ export default class CCOTPage extends ExtensionPage {
     return items;
   }
   selectTab(tab) {
-    if (tab !== this.tab && this.ticketPanel?.hasUnsaved() && !window.confirm(t("lib.there_are_unsaved_ticket_changes_leave_and_discard_them"))) return;
+    if (tab !== this.tab && this.ticketPanel?.hasUnsaved()) {
+      app.modal.show(ConfirmActionModal,{message:t('lib.there_are_unsaved_ticket_changes_leave_and_discard_them'),confirmLabel:t('lib.discard_changes'),run:()=>{this.tab=tab;}});
+      return;
+    }
     this.tab = tab;
   }
   field(key, multiline = false) {
@@ -53,6 +67,12 @@ export default class CCOTPage extends ExtensionPage {
     }
   }
   content() {
+    return m('.CCOT.CCOT-admin', [
+      m(DependencyWarnings, { onchange: (ready) => this.dependenciesChanged(ready) }),
+      this.dependenciesReady ? this.businessContent() : null,
+    ]);
+  }
+  businessContent() {
     let body;
     if (this.tab === 'sms') {
       body = m(SmsSettings, { onsaved: () => this.fetchHealth() });
@@ -75,8 +95,8 @@ export default class CCOTPage extends ExtensionPage {
     } else {
       body = [m('p', t("lib.account_pages_show_a_chinese_province_or_an_overseas_country")), this.health && m('p', t("lib.region_status", { status: this.health.ipv6Ready ? t("lib.offline_database_configured") : t("lib.not_configured_unrecognized_addresses_show_unknown") }))];
     }
-    return m('.CCOT.CCOT-admin', [m('p.CCOT-help', t("lib.china_compliance_operations_toolkit")), m('p.Alert', { role: 'status' }, t('lib.automatic_setup_notice')), m('.CCOT-tabs', { role: 'tablist', 'aria-label': t("lib.ccot_administration_sections") }, Object.keys(tabs).map((tab) => m(Button, {
+    return [m('p.CCOT-help', t("lib.china_compliance_operations_toolkit")), m('p.Alert', { role: 'status' }, t('lib.automatic_setup_notice')), m('.CCOT-tabs', { role: 'tablist', 'aria-label': t("lib.ccot_administration_sections") }, Object.keys(tabs).map((tab) => m(Button, {
       type: 'button', role: 'tab', 'aria-selected': String(this.tab === tab), className: `Button ${this.tab === tab ? 'Button--primary' : ''}`, onclick: () => this.selectTab(tab),
-    }, tabs[tab]))), body, this.tab === 'footer' && this.submitButton()]);
+    }, tabs[tab]))), body, this.tab === 'footer' && this.submitButton()];
   }
 }

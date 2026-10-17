@@ -25,10 +25,11 @@
     "flarum-lang/chinese-simplified": "2.0.0",
     "alibabacloud/dysmsapi-20170525": "4.6.0",
     "zoujingli/ip2region": "3.0.16",
-    "ext-exif": "*",
-    "intervention/image": "3.11.10"
+    "intervention/image": "3.11.10",
+    "composer-runtime-api": "^2.1"
   },
   "suggest": {
+    "ext-exif": "CCOT业务运行需要EXIF读取照片方向；可安装后在CCOT后台检查补齐。",
     "flarum/messages": "可选的官方私信功能；已验证 2.0.0 / 2.0.1，可单独启停。"
   },
   "conflict": {

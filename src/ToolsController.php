@@ -110,7 +110,8 @@ final class ToolsController implements RequestHandlerInterface
                     $values['hold'] = $b['hold'];
                 }
                 $changed = $this->db->table('ccot_tickets')->where('id', $id)->update($values);
-                if (! $changed) throw new Problem(I18n::t('api.ticket_not_found'), 404);
+                // MySQL reports zero changed rows for an identical save within the same second.
+                if (! $changed && ! $this->db->table('ccot_tickets')->where('id', $id)->exists()) throw new Problem(I18n::t('api.ticket_not_found'), 404);
                 $this->log->info('CCOT ticket updated', ['actor_id' => $actor->id, 'ticket_id' => $id]);
                 return PrivateResponse::json(['ok' => true]);
             }

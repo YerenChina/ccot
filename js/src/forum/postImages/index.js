@@ -37,7 +37,9 @@ export default function installPhotoComposer() {
   extend('flarum/common/components/TextEditor','controlItems',function(items){const state=this.attrs.composer?.fields.ccotPhotos;if(!state)return;const submit=items.get('submit');if(submit?.attrs)submit.attrs.disabled=!!this.attrs.disabled||state.pending();});
   for(const method of ['oncreate','onupdate'])extend('flarum/forum/components/CommentPost',method,function(){
     const images=this.attrs.post.attribute('ccotPostImages')||[];
-    for(const image of images){for(const node of this.element.querySelectorAll('.Post-body img')){if(node.getAttribute('src')!==image.thumb)continue;const anchor=node.closest('a');if(!anchor)continue;anchor.classList.add('CCOT-post-image');anchor.onclick=event=>{event.preventDefault();app.modal.show(PhotoModal,{image:image.image});};node.onerror=()=>{node.alt=t('lib.post_images_blocked');node.classList.add('CCOT-image-unavailable');};}}
+    for(const image of images){for(const node of this.element.querySelectorAll('.Post-body img')){if(node.getAttribute('src')!==image.thumb)continue;const anchor=node.closest('a');if(!anchor)continue;
+      if(image.deleted){const placeholder=document.createElement('span');placeholder.className='CCOT-image-deleted';placeholder.textContent=t('lib.post_images_deleted');anchor.replaceWith(placeholder);continue;}
+      anchor.classList.add('CCOT-post-image');anchor.onclick=event=>{event.preventDefault();app.modal.show(PhotoModal,{image:image.image});};node.onerror=()=>{node.alt=t('lib.post_images_blocked');node.classList.add('CCOT-image-unavailable');};}}
     // Only an image-only native paragraph becomes a gallery. Historical inline content stays in place.
     for(const paragraph of this.element.querySelectorAll('.Post-body p')){
       if(paragraph.querySelector('.CCOT-post-image')&&Array.from(paragraph.childNodes).every(node=>node.nodeType===3?!node.textContent.trim():node.nodeName==='BR'||node.classList?.contains('CCOT-post-image')))paragraph.classList.add('CCOT-post-gallery');

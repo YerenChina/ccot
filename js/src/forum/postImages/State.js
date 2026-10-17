@@ -36,7 +36,7 @@ export default class PhotoState {
     if (item.status === 'uploading') return;
     this.items = this.items.filter(i => i !== item); this.error = '';
     // Defer bound image removal to the native post save. Pending removal only marks it unused.
-    if (item.id && !item.postId) app.request({ method: 'DELETE', url: app.forum.attribute('baseUrl') + '/assets/ccot-post-images/' + item.id }).catch(() => {});
+    if (item.id && !item.postId) app.request({ method: 'DELETE', url: app.forum.attribute('apiUrl') + '/ccot/post-images/' + item.id }).catch(() => {});
   }
   compose(text) { const ids = this.items.filter(i => i.status === 'done').map(i => i.id); return this.simple && ids.length ? text + '\n\n' + ids.map(photoToken).join('\n') : text; }
 }
