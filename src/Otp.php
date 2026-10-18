@@ -23,10 +23,15 @@ final class Otp
         if ($purpose === 'register' && $binding) throw new Problem(I18n::t('api.this_phone_number_is_registered_please_log_in'), 409);
         if (in_array($purpose, ['login', 'reset'], true) && ! $binding) throw new Problem(I18n::t('api.the_account_could_not_be_verified_check_the_phone_number'), 401);
         if (in_array($purpose, ['new', 'bind'], true) && $binding) throw new Problem(I18n::t('api.this_phone_number_is_already_bound_to_an_account'), 409);
-        $this->sms->assertReady($phone);
-        $this->limits->cooldown('sms.phone.interval', $hash, max(10, (int) $smsConfig['interval']));
-        $this->limits->take('sms.phone.day', $hash, 86400, max(1, (int) $smsConfig['phone_limit']));
-        $this->limits->take('sms.ip.hour', $ip, 3600, max(1, (int) $smsConfig['ip_limit']));
+        $test = $purpose === 'test';
+        $this->sms->assertReady($phone, $test);
+        if ($test) {
+            $this->limits->cooldown('sms.test.phone.interval', $hash, 60);
+        } else {
+            $this->limits->cooldown('sms.phone.interval', $hash, max(10, (int) $smsConfig['interval']));
+            $this->limits->take('sms.phone.day', $hash, 86400, max(1, (int) $smsConfig['phone_limit']));
+            $this->limits->take('sms.ip.hour', $ip, 3600, max(1, (int) $smsConfig['ip_limit']));
+        }
         $this->limits->take('sms.site.day', 'all', 86400, max(1, min(10000, (int) $smsConfig['site_limit'])));
         $id = bin2hex(random_bytes(16));
         $code = (string) random_int(100000, 999999);
@@ -36,7 +41,7 @@ final class Otp
             'attempts' => 0, 'state' => 'pending',
         ]);
         try {
-            $provider = $this->sms->send($id, $phone, $code);
+            $provider = $this->sms->send($id, $phone, $code, $test);
             $this->db->table('ccot_codes')->where('id', $id)->update(['state' => 'sent']);
             $this->log->info('CCOT sms accepted', ['challenge_id' => $id] + $provider);
         } catch (\Throwable $error) {

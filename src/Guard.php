@@ -58,7 +58,7 @@ final class Guard implements MiddlewareInterface
         $enabled = in_array('bushcraftcn-ccot', json_decode($this->settings->get('extensions_enabled', '[]'), true) ?: [], true)
             && class_exists(\BushcraftCN\CCOT\AuthController::class);
         $maintenance = $actor->isAdmin() && (self::nativeMaintenance($path) || self::nativeReadState($request, $path)
-            || in_array($path, ['/ccot/sms-settings', '/ccot/sms-test', '/ccot/sms-test-verify', '/ccot/block'], true)
+            || in_array($path, ['/ccot/sms-settings', '/ccot/sms-test-start', '/ccot/sms-test', '/ccot/sms-test-verify', '/ccot/block'], true)
             || str_starts_with($path, '/ccot/account-')
             || str_starts_with($path, '/ccot/post-images/')
             || (in_array($request->getMethod(), ['PATCH', 'DELETE'], true) && preg_match('~^/ccot/tickets/[1-9][0-9]*$~D', $path)));

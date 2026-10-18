@@ -79,6 +79,7 @@ return [
                 ->get('/ccot/health', 'ccot.health', CCOT\ToolsController::class)
                 ->get('/ccot/sms-settings', 'ccot.sms.settings', CCOT\SmsAdminController::class)
                 ->post('/ccot/sms-settings', 'ccot.sms.save', CCOT\SmsAdminController::class)
+                ->post('/ccot/sms-test-start', 'ccot.sms.test-start', CCOT\SmsAdminController::class)
                 ->post('/ccot/sms-test', 'ccot.sms.test', CCOT\SmsAdminController::class)
                 ->post('/ccot/sms-test-verify', 'ccot.sms.verify', CCOT\SmsAdminController::class)
                 ->post('/ccot/block', 'ccot.block', CCOT\ToolsController::class)

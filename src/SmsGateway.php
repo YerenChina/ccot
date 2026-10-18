@@ -15,24 +15,24 @@ final class SmsGateway
     public function __construct(private Config $config, private SettingsRepositoryInterface $settings, private Crypto $crypto, private SmsConfig $smsConfig, private Limiter $limits) {}
 
     /** Read-only preflight: configuration failures must not consume OTP quotas. */
-    public function assertReady(#[\SensitiveParameter] string $phone): array
+    public function assertReady(#[\SensitiveParameter] string $phone, bool $test = false): array
     {
         $sms = $this->smsConfig->read();
         if ($sms['paused']) throw new Problem(I18n::t('api.sms_sending_is_paused_unpause_and_save_it_in_administration'), 503);
         $mode = $sms['mode'];
         if ($mode !== 'aliyun' || ! $sms['enabled']) throw new Problem(I18n::t('api.real_sms_is_disabled_select_allow_real_sms_sending_and'), 503);
         if (! $phone) throw new Problem(I18n::t('api.save_the_test_recipient_phone_number_first'), 422);
-        if ($this->smsConfig->local() && (! $sms['test_phone'] || ! hash_equals($this->crypto->digest('phone', $sms['test_phone']), $this->crypto->digest('phone', $phone)))) throw new Problem(I18n::t('api.local_sms_testing_only_allows_the_configured_recipient'), 403);
+        if ($test && (! $sms['test_phone'] || ! hash_equals($this->crypto->digest('phone', $sms['test_phone']), $this->crypto->digest('phone', $phone)))) throw new Problem(I18n::t('api.local_sms_testing_only_allows_the_configured_recipient'), 403);
         if (! $sms['key_id'] || ! $sms['key_secret'] || ! $sms['sign'] || ! $sms['template']) throw new Problem(I18n::t('api.sms_settings_are_incomplete_enter_the_accesskey_signature_and_template'), 503);
-        if ($this->smsConfig->local()) $this->limits->checkScoped($sms['grant_id'], $sms['test_limit'], $sms['test_expires']);
+        if ($test) $this->limits->checkScoped($sms['grant_id'], $sms['test_limit'], $sms['test_expires']);
         return $sms;
     }
 
-    public function send(string $id, #[\SensitiveParameter] string $phone, #[\SensitiveParameter] string $code): array
+    public function send(string $id, #[\SensitiveParameter] string $phone, #[\SensitiveParameter] string $code, bool $test = false): array
     {
-        $sms = $this->assertReady($phone);
+        $sms = $this->assertReady($phone, $test);
         $keyId = $sms['key_id']; $keySecret = $sms['key_secret']; $sign = $sms['sign']; $template = $sms['template'];
-        if ($this->smsConfig->local()) $this->limits->scoped($sms['grant_id'], $sms['test_limit'], $sms['test_expires']);
+        if ($test) $this->limits->scoped($sms['grant_id'], $sms['test_limit'], $sms['test_expires']);
         // Never include provider exceptions, request bodies or credentials in user errors/logs.
         try {
             $client = new Dysmsapi(new AlibabaConfig(['accessKeyId' => $keyId, 'accessKeySecret' => $keySecret, 'endpoint' => 'dysmsapi.aliyuncs.com', 'retryOptions' => new RetryOptions(['retryable' => false])]));

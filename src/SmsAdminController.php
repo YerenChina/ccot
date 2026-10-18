@@ -19,9 +19,13 @@ final class SmsAdminController implements RequestHandlerInterface
             $actor = RequestUtil::getActor($request);
             if (! $actor->isAdmin()) throw new Problem(I18n::t('api.sms_administration_permission_required'), 403);
             $body = $request->getParsedBody() ?? [];
+            if (! is_array($body)) throw new Problem(I18n::t('api.check_the_sms_settings'), 422);
             $action = basename($request->getUri()->getPath());
-            if ($action === 'sms-settings') {
-                if ($request->getMethod() === 'POST') {
+            if ($action === 'sms-settings' || $action === 'sms-test-start') {
+                if ($action === 'sms-test-start') {
+                    $this->config->startTest($body);
+                    $this->log->info('CCOT SMS test started', ['actor_id' => $actor->id]);
+                } elseif ($request->getMethod() === 'POST') {
                     $this->config->save($body);
                     $this->log->info('CCOT SMS configuration saved', ['actor_id' => $actor->id]);
                 }
@@ -30,9 +34,9 @@ final class SmsAdminController implements RequestHandlerInterface
                 $phone = $this->config->read()['test_phone'];
                 $status['test_ready'] = false;
                 $status['test_block_reason'] = '';
-                try { $this->sms->assertReady($phone); $status['test_ready'] = true; }
+                try { $this->sms->assertReady($phone, true); $status['test_ready'] = true; }
                 catch (Problem $error) { $status['test_block_reason'] = $error->getMessage(); }
-                $status['test_retry_after'] = $phone ? $this->limits->cooldownRemaining('sms.phone.interval', $this->crypto->digest('phone', $phone)) : 0;
+                $status['test_retry_after'] = $phone ? $this->limits->cooldownRemaining('sms.test.phone.interval', $this->crypto->digest('phone', $phone)) : 0;
                 return PrivateResponse::json($status);
             }
             $phone = $this->config->read()['test_phone'];

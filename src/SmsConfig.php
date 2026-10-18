@@ -65,12 +65,37 @@ final class SmsConfig
 
     public function save(#[\SensitiveParameter] array $body): array
     {
+        return $this->locked(fn () => $this->saveLocked($body));
+    }
+
+    /** Explicit administrator action; never called by ordinary configuration saves. */
+    public function startTest(#[\SensitiveParameter] array $body): array
+    {
+        return $this->locked(function () use ($body) {
+            if (! $this->local() && $this->config->url()->getScheme() !== 'https') throw new Problem(I18n::t('api.enable_https_before_using_a_production_environment'), 503);
+            if (array_diff(array_keys($body), ['test_phone', 'test_limit']) || (array_key_exists('test_phone', $body) && ! is_string($body['test_phone']))) throw new Problem(I18n::t('api.check_the_sms_settings'), 422);
+            $next = $this->read();
+            $phone = trim($body['test_phone'] ?? '');
+            if ($phone !== '') $next['test_phone'] = $this->crypto->phone($phone);
+            if (! $next['test_phone']) throw new Problem(I18n::t('api.specify_a_recipient_phone_number_for_real_sms_testing'), 422);
+            $limit = filter_var($body['test_limit'] ?? null, FILTER_VALIDATE_INT);
+            if ($limit === false || $limit < 1 || $limit > 20) throw new Problem(I18n::t('api.sending_frequency_or_limits_are_outside_the_allowed_range'), 422);
+            if (! $next['enabled']) throw new Problem(I18n::t('api.real_sms_is_disabled_select_allow_real_sms_sending_and'), 503);
+            $next['test_limit'] = $limit;
+            $next['grant_id'] = bin2hex(random_bytes(16));
+            $next['test_expires'] = time() + 7200;
+            return $this->persist($next, false);
+        });
+    }
+
+    private function locked(callable $operation): array
+    {
         $lock = fopen($this->path().'.lock', 'c');
         if (! $lock) throw new Problem(I18n::t('api.could_not_lock_the_private_sms_configuration'), 503);
         chmod($this->path().'.lock', 0600);
         try {
             if (! flock($lock, LOCK_EX)) throw new Problem(I18n::t('api.sms_configuration_is_busy_please_retry_later'), 503);
-            return $this->saveLocked($body);
+            return $operation();
         } finally { flock($lock, LOCK_UN); fclose($lock); }
     }
 
@@ -86,7 +111,7 @@ final class SmsConfig
             $next[$field] = trim($body[$field]);
         }
         if (strlen($next['sign']) > 300 || strlen($next['template']) > 100 || ! preg_match('/^[A-Za-z_][A-Za-z0-9_]{0,31}$/D', $next['variable'])) throw new Problem(I18n::t('api.invalid_sms_signature_template_or_variable_name'), 422);
-        foreach (['interval' => [10, 3600], 'phone_limit' => [1, 100], 'ip_limit' => [1, 1000], 'site_limit' => [1, 10000], 'test_limit' => [1, 20]] as $field => [$minimum, $maximum]) {
+        foreach (['interval' => [10, 3600], 'phone_limit' => [1, 100], 'ip_limit' => [1, 1000], 'site_limit' => [1, 10000]] as $field => [$minimum, $maximum]) {
             $number = filter_var($body[$field] ?? null, FILTER_VALIDATE_INT);
             if ($number === false || $number < $minimum || $number > $maximum) throw new Problem(I18n::t('api.sending_frequency_or_limits_are_outside_the_allowed_range'), 422);
             $next[$field] = $number;
@@ -101,18 +126,12 @@ final class SmsConfig
         if (($body['clear_keys'] ?? false) === true) { $next['key_id'] = ''; $next['key_secret'] = ''; $next['disable_environment'] = true; }
         $next['enabled'] = ($body['enabled'] ?? false) === true && ($body['clear_keys'] ?? false) !== true;
         $next['paused'] = ($body['paused'] ?? false) === true;
-        $phone = trim((string) ($body['test_phone'] ?? ''));
-        if ($phone !== '') $next['test_phone'] = $this->crypto->phone($phone);
         if ($next['enabled'] && (! $next['key_id'] || ! $next['key_secret'] || ! $next['sign'] || ! $next['template'])) throw new Problem(I18n::t('api.complete_the_accesskey_signature_and_template_before_allowing_real_sms'), 422);
-        if ($this->local() && $next['enabled']) {
-            if (! $next['test_phone']) throw new Problem(I18n::t('api.specify_a_recipient_phone_number_for_real_sms_testing'), 422);
-            if (! $current['grant_id'] || ! $current['enabled'] || ($body['restart_test'] ?? false) === true) {
-                $next['grant_id'] = bin2hex(random_bytes(16));
-                $next['test_expires'] = time() + 7200;
-            } elseif ($next['test_phone'] !== $current['test_phone'] || $next['test_limit'] !== $current['test_limit']) {
-                throw new Problem(I18n::t('api.restart_the_test_when_changing_its_recipient_or_budget'), 422);
-            }
-        }
+        return $this->persist($next);
+    }
+
+    private function persist(#[\SensitiveParameter] array $next, bool $savePause = true): array
+    {
         $path = $this->path();
         $temporary = $path.'.'.bin2hex(random_bytes(6)).'.tmp';
         try {
@@ -123,7 +142,7 @@ final class SmsConfig
             $written = fwrite($handle, $cipher); fclose($handle);
             if ($written !== strlen($cipher) || ! rename($temporary, $path)) throw new \RuntimeException('Cannot save protected configuration');
         } finally { if (is_file($temporary)) unlink($temporary); }
-        $this->settings->set('bushcraftcn-ccot.sms_paused', $next['paused'] ? '1' : '0');
+        if ($savePause) $this->settings->set('bushcraftcn-ccot.sms_paused', $next['paused'] ? '1' : '0');
         return $this->publicStatus();
     }
 }

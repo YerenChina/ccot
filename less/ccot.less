@@ -79,6 +79,13 @@
   .CCOT-ticket-time { margin-left: auto; }
 }
 .CCOT-account-section, .CCOT-account-recovery { margin-bottom: 32px; }
+.CCOT-backup { max-width: 1000px; overflow-wrap: anywhere; }
+.CCOT-backup-list { display: grid; grid-template-columns: minmax(7em, 10em) minmax(0, 1fr); gap: 12px 16px; line-height: 1.7; }
+.CCOT-backup-list dt { font-weight: 700; }
+.CCOT-backup-list dd { margin: 0; }
+.CCOT-backup ol { padding-left: 24px; }
+.CCOT-backup li { margin-bottom: 12px; }
+@media (max-width: 600px) { .CCOT-backup-list { grid-template-columns: minmax(0, 1fr); gap: 6px; } .CCOT-backup-list dd { margin-bottom: 12px; } }
 .CCOT-account-section .Checkbox { margin-bottom: 16px; }
 .CCOT-account-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
 .CCOT-account-checks { padding-left: 24px; margin: 16px 0; }

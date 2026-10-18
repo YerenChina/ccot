@@ -32,8 +32,8 @@ final class Management
             ->leftJoin('users as u', 'u.id', '=', 'i.user_id')
             ->leftJoin('users as a', 'a.id', '=', 'p.user_id');
         if ($state === 'deleted') $query->whereNotNull('i.deleted_at');
-        elseif ($state !== 'all') {
-            $query->whereNull('i.deleted_at');
+        else $query->whereNull('i.deleted_at');
+        if ($state !== 'all' && $state !== 'deleted') {
             if ($state === 'blocked') $query->whereNotNull('i.blocked_at');
             else {
                 $query->whereNull('i.blocked_at');

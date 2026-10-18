@@ -9,10 +9,11 @@ import Link from 'flarum/common/components/Link';
 import isExtensionEnabled from 'flarum/admin/utils/isExtensionEnabled';
 import SmsSettings from './SmsSettings';
 import AccountManagement from './AccountManagement';
+import BackupPanel from './BackupPanel';
 import TicketsPanel from '../common/TicketsPanel';
 import DependencyWarnings from './DependencyWarnings';
 
-const tabs = { get sms() { return t("lib.sms_settings"); }, get footer() { return t("lib.footer_and_pages"); }, get tickets() { return t("lib.tickets"); }, get photos() { return t("lib.post_images_photos"); }, get messages() { return t("lib.private_messages"); }, get region() { return t("lib.ip_region_settings"); }, get account() { return t("lib.account_management"); }, get uninstall() { return t("lib.uninstall_preparation"); } };
+const tabs = { get sms() { return t("lib.sms_settings"); }, get footer() { return t("lib.footer_and_pages"); }, get tickets() { return t("lib.tickets"); }, get photos() { return t("lib.post_images_photos"); }, get messages() { return t("lib.private_messages"); }, get region() { return t("lib.ip_region_settings"); }, get account() { return t("lib.account_management"); }, get uninstall() { return t("lib.uninstall_preparation"); }, get backup() { return t('lib.backup_title'); } };
 const labels = {
   get organization() { return t("lib.operating_organization"); }, get organization_url() { return t("lib.organization_link_optional_complete_http_or_https_url"); }, get contact() { return t("lib.public_contact_email"); }, get icp() { return t("lib.icp_filing_number"); }, get police() { return t("lib.approved_public_security_filing_number"); },
   get agreement() { return t("lib.user_agreement"); }, get privacy() { return t("lib.privacy_policy"); }, get rules() { return t("lib.community_rules"); }, get faq() { return t("lib.faq_and_regulatory_information"); }, get sms_sign() { return t("lib.alibaba_cloud_sms_signature"); }, get sms_template() { return t("lib.verification_template_id"); }, get sms_daily_limit() { return t("lib.daily_site_sms_request_limit_including_failures"); },
@@ -92,10 +93,12 @@ export default class CCOTPage extends ExtensionPage {
       body = m('.CCOT-account-page', m(AccountManagement, { key: 'account', page: 'account' }));
     } else if (this.tab === 'uninstall') {
       body = m('.CCOT-account-page', m(AccountManagement, { key: 'uninstall', page: 'uninstall' }));
+    } else if (this.tab === 'backup') {
+      body = m(BackupPanel);
     } else {
       body = [m('p', t("lib.account_pages_show_a_chinese_province_or_an_overseas_country")), this.health && m('p', t("lib.region_status", { status: this.health.ipv6Ready ? t("lib.offline_database_configured") : t("lib.not_configured_unrecognized_addresses_show_unknown") }))];
     }
-    return [m('p.CCOT-help', t("lib.china_compliance_operations_toolkit")), m('p.Alert', { role: 'status' }, t('lib.automatic_setup_notice')), m('.CCOT-tabs', { role: 'tablist', 'aria-label': t("lib.ccot_administration_sections") }, Object.keys(tabs).map((tab) => m(Button, {
+    return [m('p.CCOT-help', t('lib.admin_setup_help')), m('.CCOT-tabs', { role: 'tablist', 'aria-label': t("lib.ccot_administration_sections") }, Object.keys(tabs).map((tab) => m(Button, {
       type: 'button', role: 'tab', 'aria-selected': String(this.tab === tab), className: `Button ${this.tab === tab ? 'Button--primary' : ''}`, onclick: () => this.selectTab(tab),
     }, tabs[tab]))), body, this.tab === 'footer' && this.submitButton()];
   }
